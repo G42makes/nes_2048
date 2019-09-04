@@ -37,6 +37,19 @@ const char PALETTE[32] = {
   0x0d,0x27,0x2a	// sprite palette 3
 };
 
+//define the board sizes here, so we can play with it later
+// 4 x 4 is default and good for testing
+#define BOARD_W 4
+#define BOARD_H 4
+
+//Let's store the 2048 board, for now we will just use ints
+int board[BOARD_H][BOARD_W] = {
+  { 0, 0, 0, 0},
+  { 0, 0, 0, 0},
+  { 0, 0, 0, 0},
+  { 0, 0, 0, 0}
+};
+
 // setup PPU and tables
 void setup_graphics() {
   // clear sprites
@@ -45,15 +58,56 @@ void setup_graphics() {
   pal_all(PALETTE);
 }
 
+//take the current state and draw it, nothing too hard
+void draw_gameboard() {
+  //for now we just use the buildin text output routines, but will change to something visually nicer later
+  int i = 0;
+  int j = 0;
+  char *strval;
+  
+  //header
+  vram_adr(NTADR_A(19,2));
+  vram_write("2048", 4);
+  
+  for( i = BOARD_H; i > 0; i--) {
+    for( j = BOARD_W; j > 0; j--) {
+      itoa(board[i-1][j-1], strval, 10);
+      
+      vram_adr(NTADR_A( (4 +  (j - 1) * 5 ) + (4 - strlen(strval)), 1 + ( i * 4 )));
+      vram_write(strval, strlen(strval));
+    }
+  }
+}
+
+//add a block to the board
+void add_block() {
+  //just add a block, start with anywhere, but we will soon need to make sure it's an empty spot
+  int i = rand() % BOARD_H;
+  int j = rand() % BOARD_W;
+  int v = rand() % 10 ? 2: 4;	//1 in 10 will be a 4 block
+  board[i][j] = v;
+}
+
+//init the board with some values
+void init_gameboard() {
+  int i = 0;
+  int j = 0;
+  
+  //init random number generator....
+  srand(7);
+  add_block();
+  add_block();
+}
+
 void main(void)
 {
   setup_graphics();
-  // draw message  
-  vram_adr(NTADR_A(2,2));
-  vram_write("HELLO, WORLD!", 12);
+  init_gameboard();
+  draw_gameboard();
   // enable rendering
   ppu_on_all();
   // infinite loop
-  while(1) {
+  while (1) {
+   
   }
 }
