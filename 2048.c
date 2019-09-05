@@ -51,8 +51,8 @@ const char PALETTE[32] = {
 
 //Let's store the 2048 board, for now we will just use ints
 int board[BOARD_H][BOARD_W] = {
-  { 0, 0, 0, 1024},
-  { 0, 0, 0, 1024},
+  { 0, 0, 0, 0},
+  { 0, 0, 0, 0},
   { 0, 0, 0, 0},
   { 0, 0, 0, 0}
 };
