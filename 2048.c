@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 // include NESLIB header
@@ -44,10 +45,10 @@ const char PALETTE[32] = {
 
 //Let's store the 2048 board, for now we will just use ints
 int board[BOARD_H][BOARD_W] = {
-  { 1, 0, 0, 2},
-  { 0, 3, 0, 0},
-  { 5, 6, 7, 0},
-  { 0, 4, 0, 8}
+  { 0, 0, 0, 0},
+  { 0, 0, 0, 0},
+  { 0, 0, 0, 0},
+  { 0, 0, 0, 0}
 };
 
 // setup PPU and tables
@@ -61,32 +62,36 @@ void setup_graphics() {
 //take the current state and draw it, nothing too hard
 void draw_gameboard() {
   //for now we just use the buildin text output routines, but will change to something visually nicer later
-  int vi = 0;
-  int vj = 0;
-  char *strval;
+  int i = 0;
+  char buf[32];
   vrambuf_clear();
 
   //header
   vram_adr(NTADR_A(19,2));
   vram_write("2048", 4);
   
-  for( vi = BOARD_H; vi > 0; vi--) {
-    for( vj = BOARD_W; vj > 0; vj--) {
-      itoa(board[vi-1][vj-1], strval, 10);
-      
-      vram_adr(NTADR_A( (4 +  (vj - 1) * 5 ) + (4 - strlen(strval)), 1 + ( vi * 4 )));
-      vram_write(strval, strlen(strval));
-    }
+  for( i = BOARD_H - 1; i >= 0; i--) {
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%4d %4d %4d %4d", board[i][0], board[i][1], board[i][2], board[i][3]);
+    vram_adr(NTADR_A(4, 5 + ( i * 4 )));
+    vram_write(buf, sizeof(buf));
   }
 }
 
 //add a block to the board
 void add_block() {
-  //just add a block, start with anywhere, but we will soon need to make sure it's an empty spot
-  int i = rand() % BOARD_H;
-  int j = rand() % BOARD_W;
+  bool done = false;
   int v = rand() % 10 ? 2: 4;	//1 in 10 will be a 4 block
-  board[i][j] = v;
+  
+  while(!done) {
+    int i = rand() % BOARD_H;
+    int j = rand() % BOARD_W;
+    
+    if(board[i][j] == 0) {
+      board[i][j] = v;
+      done = true;
+    }
+  }
 }
 
 //init the board with some values
@@ -97,9 +102,9 @@ void init_gameboard() {
   
   //init random number generator....
   srand(0);
-  /*add_block();
-  add_block();//TODO: bring back to only 2 times after testing
   add_block();
+  add_block();//TODO: bring back to only 2 times after testing
+  /*add_block();
   add_block();
   add_block();
   add_block();*/
@@ -156,7 +161,7 @@ void move_shift(char dir) {
           board[i][j] = 0;
         }
       }
-    break;
+      break;
       
     case PAD_DOWN:
       for ( j = BOARD_W - 1; j >= 0; j--) {
@@ -182,14 +187,64 @@ void move_shift(char dir) {
 
 //do merges based on direction pressed
 void move_merge(char dir) {
-  if (dir == PAD_LEFT) {
+  int i = 1;
+  int j = 0;
+  switch (dir) {
+    case PAD_LEFT: 
+      for ( i = BOARD_H - 1; i >= 0; i--) {
+        //BOARD_W - 1 here, as there is no match past the edge of the board
+        for( j = 0; j < BOARD_W - 1 ; j++) {
+          if(board[i][j] == board[i][j+1]){
+            board[i][j] *= 2;
+            board[i][j+1] = 0;
+          }
+        }
+      }
+      break;
+    case PAD_RIGHT:
+      for ( i = BOARD_H - 1; i >= 0; i--) {
+        //here we have j >= 1 to avoid going past the edge
+        for( j = BOARD_W - 1; j >= 1 ; j--) {
+          if(board[i][j] == board[i][j-1]){
+            board[i][j] *= 2;
+            board[i][j-1] = 0;
+          }
+        }
+      }
+      break;
+      
+    case PAD_UP:
+      for( j = 0; j < BOARD_W ; j++) {
+        //again BOARD_H - 1 to avoid the edge
+        for( i = 0; i < BOARD_H - 1; i++) {
+          if(board[i][j] == board[i+1][j]){
+            board[i][j] *= 2;
+            board[i+1][j] = 0;
+          }
+        }
+      }      
+      break;
+      
+    case PAD_DOWN:
+      for( j = 0; j < BOARD_W ; j++) {
+        //again to i >= 1 to avoid the edge
+        for( i = BOARD_H - 1; i >= 1 ; i--) {	
+          if(board[i][j] == board[i-1][j]){
+            board[i][j] *= 2;
+            board[i-1][j] = 0;
+          }
+        }
+      }     
+      break;
+
+    default: 
+      break;
   }
 }
 
 //let's move the numbers...
 void move_gameboard(char pad) {
    if (pad & PAD_LEFT) {
-     //vram_write("\x1c\x1d\x1e\x1f to move metasprite", 24);
      vram_adr(NTADR_A(7,2));
      vram_write("\x1e", 1);
      //we do the shift twice to handle gaps after merge
@@ -216,6 +271,8 @@ void move_gameboard(char pad) {
      move_shift(PAD_DOWN);
    }
    draw_gameboard();
+  
+   add_block();
 }
 
 //check if this is a valid move
