@@ -43,10 +43,16 @@ const char PALETTE[32] = {
 #define BOARD_W 4
 #define BOARD_H 4
 
+//some values to define win/loss/continue state
+#define GAME_CONTINUE 0
+#define GAME_LOSE 1
+#define GAME_WIN 2
+
+
 //Let's store the 2048 board, for now we will just use ints
 int board[BOARD_H][BOARD_W] = {
-  { 0, 0, 0, 0},
-  { 0, 0, 0, 0},
+  { 0, 0, 0, 1024},
+  { 0, 0, 0, 1024},
   { 0, 0, 0, 0},
   { 0, 0, 0, 0}
 };
@@ -70,6 +76,7 @@ void draw_gameboard() {
   vram_adr(NTADR_A(19,2));
   vram_write("2048", 4);
   
+  //trust me, works so much better then my first attempt
   for( i = BOARD_H - 1; i >= 0; i--) {
     memset(buf, 0, sizeof(buf));
     sprintf(buf, "%4d %4d %4d %4d", board[i][0], board[i][1], board[i][2], board[i][3]);
@@ -112,7 +119,7 @@ void init_gameboard() {
 
 //shift the numbers a direction
 void move_shift(char dir) {
-  int i = 1;
+  int i = 0;
   int j = 0;
   int c = 0;
   
@@ -187,7 +194,7 @@ void move_shift(char dir) {
 
 //do merges based on direction pressed
 void move_merge(char dir) {
-  int i = 1;
+  int i = 0;
   int j = 0;
   switch (dir) {
     case PAD_LEFT: 
@@ -270,15 +277,81 @@ void move_gameboard(char pad) {
      move_merge(PAD_DOWN);
      move_shift(PAD_DOWN);
    }
-   draw_gameboard();
   
    add_block();
+   draw_gameboard();
+
+}
+
+//check a pair of values if they are a valid move pair
+// should be double numbers or 0 followed by a number
+bool is_valid_pair(int a, int b) {
+  if((a == 0) && (b != 0)) return true;
+  if((a != 0) && (a == b)) return true;
 }
 
 //check if this is a valid move
 bool is_valid_move(char pad) {
-  char a = pad;
-  return true; 
+  int i = 0;
+  int j = 0;
+
+  if (pad & PAD_LEFT) {
+    for ( i = BOARD_H - 1; i >= 0; i--) {
+      for( j = 0; j < BOARD_W - 1 ; j++) {
+        if(is_valid_pair(board[i][j], board[i][j+1])) return true;
+      }
+    }
+  } else if (pad & PAD_RIGHT) {
+    for ( i = BOARD_H - 1; i >= 0; i--) {
+      for( j = BOARD_W - 1; j >= 1 ; j--) {
+        if(is_valid_pair(board[i][j], board[i][j-1])) return true;
+      }
+    }
+  } else if (pad & PAD_UP) {
+    for( j = 0; j < BOARD_W ; j++) {
+      for( i = 0; i < BOARD_H - 1; i++) {
+        if(is_valid_pair(board[i][j], board[i+1][j])) return true;
+      }
+    }
+  } else if (pad & PAD_DOWN) {
+    for( j = 0; j < BOARD_W ; j++) {
+      for( i = BOARD_H - 1; i >= 1 ; i--) {	
+        if(is_valid_pair(board[i][j], board[i-1][j])) return true;
+      }
+    }
+  }
+  return false; 
+}
+
+//check the status of the game
+bool game_win_lose() {
+  //brute force, just roll over all values and check for 2048 and 0s
+  int i = 0;
+  int j = 0;
+  bool win = false;
+  bool lose = false;
+
+  for( i = 0; i < BOARD_H; i++) {
+    for( j = 0; j < BOARD_W; j++) {
+      if(board[i][j] == 2048) return GAME_WIN;	//TODO make this changable for harder modes
+    }
+  }
+  //we have to check for continue after win, otherwise it often will find a 0 first.
+  for( i = 0; i < BOARD_H; i++) {
+    for( j = 0; j < BOARD_W; j++) {
+      if(board[i][j] == 0) return GAME_CONTINUE;
+    }
+  }
+     
+  //no 0s on the board, and no 2048, so player loses
+  return GAME_LOSE;
+}
+
+//let the player know they won/lost
+void draw_winscreen(int state) {
+  vram_adr(NTADR_A(9,20));
+  if(state == GAME_WIN) vram_write("WINNER!", 7);
+  if(state == GAME_LOSE) vram_write("GAME OVER", 9);
 }
 
 void main(void)
@@ -292,9 +365,12 @@ void main(void)
   ppu_on_all();
   // infinite loop
   while (1) {
+    int state;
     ppu_off();
     pad = pad_poll(0);
     if(is_valid_move(pad)) move_gameboard(pad);
+    state = game_win_lose();
+    if(state != 0) draw_winscreen(state);
     ppu_on_all();
 
     while (!pad_trigger(0)) {
