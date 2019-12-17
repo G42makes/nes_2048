@@ -23,6 +23,10 @@
 #include "vrambuf.h"
 //#link "vrambuf.c"
 
+//Use this constantly changing value to populate the random number generator
+#define __STARTUP__ 0x0001
+
+
 /*{pal:"nes",layout:"nes"}*/
 const char PALETTE[32] = { 
   0x03,			// screen color
@@ -108,7 +112,8 @@ void init_gameboard() {
   int j = 0;
   
   //init random number generator....
-  srand(0);
+  //srand(0);
+  srand(*(int*)__STARTUP__);	//Use value from 0x0001(__STARTUP__) as seed for random
   add_block();
   add_block();//TODO: bring back to only 2 times after testing
   /*add_block();
