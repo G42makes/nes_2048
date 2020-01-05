@@ -29,6 +29,7 @@
 //Import the pallet and startup screen
 extern const byte game_title_pal[16];
 extern const byte game_title_rle[];
+extern const byte game_board_rle[];
 
 //define the board sizes here, so we can play with it later
 // 4 x 4 is default and good for testing
@@ -87,9 +88,116 @@ void setup_graphics() {
   pal_all(game_title_pal);
 }
 
+void fill_tile(int x, int y, int val) {
+  int nx = (x * 4) + 9;
+  int ny = (y * 4) + 9;
+  
+  int vals[2][2] = {
+    { 0, 0},
+    { 0, 0}
+  };
+  switch (val) {
+    case 2:
+      vals[0][0] = 0x03;
+      vals[1][0] = 0x03;
+      vals[0][1] = 0x03;
+      vals[1][1] = 0xB2;      
+      break;
+    case 4:
+      vals[0][0] = 0x03;
+      vals[1][0] = 0x03;
+      vals[0][1] = 0x03;
+      vals[1][1] = 0xB4;     
+      break;
+    case 8:
+      vals[0][0] = 0x03;
+      vals[1][0] = 0x03;
+      vals[0][1] = 0x03;
+      vals[1][1] = 0xB8;      
+      break;
+    case 16:
+      vals[0][0] = 0x03;
+      vals[1][0] = 0x03;
+      vals[0][1] = 0xB1;
+      vals[1][1] = 0xB6;      
+      break;
+    case 32:
+      vals[0][0] = 0x03;
+      vals[1][0] = 0x03;
+      vals[0][1] = 0xB3;
+      vals[1][1] = 0xB2;      
+      break;
+    case 64:
+      vals[0][0] = 0x03;
+      vals[1][0] = 0x03;
+      vals[0][1] = 0xB6;
+      vals[1][1] = 0xB4;      
+      break;
+    case 128:
+      vals[0][0] = 0x03;
+      vals[1][0] = 0xB1;
+      vals[0][1] = 0xB2;
+      vals[1][1] = 0xB8;      
+      break;
+    case 256:
+      vals[0][0] = 0x03;
+      vals[1][0] = 0xB2;
+      vals[0][1] = 0xB5;
+      vals[1][1] = 0xB6;      
+      break;
+    case 512:
+      vals[0][0] = 0x03;
+      vals[1][0] = 0xB5;
+      vals[0][1] = 0xB1;
+      vals[1][1] = 0xB2;      
+      break;
+    case 1024:
+      vals[0][0] = 0xB1;
+      vals[1][0] = 0xB0;
+      vals[0][1] = 0xB2;
+      vals[1][1] = 0xB4;      
+      break;
+    case 2048:
+      vals[0][0] = 0xB2;
+      vals[1][0] = 0xB0;
+      vals[0][1] = 0xB4;
+      vals[1][1] = 0xB8;      
+      break;
+      
+    default:
+      //set it blank
+      vals[0][0] = 0x03;
+      vals[1][0] = 0x03;
+      vals[0][1] = 0x03;
+      vals[1][1] = 0x03;
+  }
+  //I don't quite know why I have to swap x and y here... but I do... 
+  //TODO figure that out
+  vram_adr(NTADR_A(ny,nx));
+  vram_put(vals[0][0]);
+  vram_adr(NTADR_A(ny+1,nx));
+  vram_put(vals[1][0]);
+  vram_adr(NTADR_A(ny,nx+1));
+  vram_put(vals[0][1]);
+  vram_adr(NTADR_A(ny+1,nx+1));
+  vram_put(vals[1][1]);
+}
+
 //take the current state and draw it, nothing too hard
 void draw_gameboard() {
-  //for now we just use the buildin text output routines, but will change to something visually nicer later
+  //TODO: use the frame buffers to draw this without actually flickering the screen so much.
+  int i;
+  int j;
+  // disable rendering
+  ppu_off();
+  // set palette, virtual bright to 0 (total black)
+  //pal_bright(0);
+  // unpack nametable into the VRAM
+  vram_adr(NAMETABLE_A);
+  vram_unrle(game_board_rle);
+  
+  
+  /*//for now we just use the buildin text output routines, but will change to something visually nicer later
   int i = 0;
   char buf[32];
   vrambuf_clear();
@@ -104,7 +212,18 @@ void draw_gameboard() {
     sprintf(buf, "%4d %4d %4d %4d", board[i][0], board[i][1], board[i][2], board[i][3]);
     vram_adr(NTADR_A(4, 5 + ( i * 4 )));
     vram_write(buf, sizeof(buf));
+  }*/
+  
+  for( i = BOARD_H - 1; i >= 0; i--) {
+    for( j = BOARD_W - 1; j >= 0; j--) {
+      fill_tile(i,j,board[i][j]);
+    }
   }
+  
+  // enable rendering
+  ppu_on_all();
+  // fade in from black
+  //fade_in();
 }
 
 //add a block to the board

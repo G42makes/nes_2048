@@ -1,5 +1,6 @@
 .export _game_title_pal
 .export _game_title_rle
+.export _game_board_rle
 
 ;;{pal:"nes",layout:"nes"};;
 _game_title_pal:
@@ -22,4 +23,19 @@ _game_title_rle:
  .byte $b4,$fe,$fc,$b5,$b6,$fe,$00,$02,$13,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$00,$02,$43,$ff,$02,$07,$0c,$5d,$aa,$02,$05
  .byte $00,$00,$aa,$02,$05,$05,$05,$35,$f5,$02,$02,$ff,$f5,$00,$af,$02,$03,$ff,$02,$02,$fc,$a6,$a5,$a5,$a9,$ff,$ff,$cf,$ff,$f3,$fc,$ff
  .byte $02,$03,$30,$0c,$0f,$02,$05,$0f,$02,$00
+;;
+
+;;{w:32,h:30,bpp:8,comp:"rletag",map:"nesnt"};;
+_game_board_rle:
+ .byte $01,$00,$01,$fe,$00,$01,$08,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03
+ .byte $03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f
+ .byte $f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$00,$01,$0f,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4
+ .byte $ff,$ff,$f6,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03
+ .byte $fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$00,$01,$0f,$f4
+ .byte $ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03
+ .byte $03,$fe,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7
+ .byte $f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$00,$01,$0f,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$00,$01,$0f,$fc,$03
+ .byte $03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03
+ .byte $fe,$00,$01,$0f,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$00,$01,$d9,$ff,$01,$03,$00,$01,$03,$ff,$01,$03
+ .byte $00,$01,$03,$ff,$01,$03,$00,$01,$03,$ff,$01,$03,$00,$01,$10,$00,$01,$00
 ;;
