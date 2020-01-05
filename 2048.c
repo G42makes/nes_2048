@@ -26,17 +26,9 @@
 //Use this constantly changing value to populate the random number generator
 #define __STARTUP__ 0x0001
 
-
-/*{pal:"nes",layout:"nes"}*/
-const char PALETTE[32] = { 
-  0x03,			// screen color
-
-  0x11,0x30,0x27,0x00,	// background palette 0
-  0x1C,0x20,0x2C,0x00,	// background palette 1
-  0x00,0x10,0x20,0x00,	// background palette 2
-  0x05,0x15,0x26,0x00,   // background palette 3
-
-};
+//Import the pallet and startup screen
+extern const byte game_title_pal[16];
+extern const byte game_title_rle[];
 
 //define the board sizes here, so we can play with it later
 // 4 x 4 is default and good for testing
@@ -57,12 +49,42 @@ int board[BOARD_H][BOARD_W] = {
   { 0, 0, 0, 0}
 };
 
+//Borrow routine to fade in the splash screen.
+void fade_in() {
+  byte vb;
+  for (vb=0; vb<=4; vb++) {
+    // set virtual bright value
+    pal_bright(vb);
+    // wait for 4/60 sec
+    ppu_wait_frame();
+    ppu_wait_frame();
+    ppu_wait_frame();
+    ppu_wait_frame();
+  }
+}
+//and borrowed routine to display the spash screen.
+void show_title_screen(const byte* pal, const byte* rle) {
+  // disable rendering
+  ppu_off();
+  // set palette, virtual bright to 0 (total black)
+  pal_bg(pal);
+  pal_bright(0);
+  // unpack nametable into the VRAM
+  vram_adr(NAMETABLE_A);
+  vram_unrle(rle);
+  // enable rendering
+  ppu_on_all();
+  // fade in from black
+  fade_in();
+}
+
+
 // setup PPU and tables
 void setup_graphics() {
   // clear sprites
   oam_clear();
   // set palette colors
-  pal_all(PALETTE);
+  pal_all(game_title_pal);
 }
 
 //take the current state and draw it, nothing too hard
@@ -103,19 +125,14 @@ void add_block() {
 
 //init the board with some values
 void init_gameboard() {
-  //TODO: wait for user to press start and use the frame count to init the srand() function
-  int i = 0;
-  int j = 0;
+  //int i = 0;
+  //int j = 0;
   
   //init random number generator....
   //srand(0);
   srand(*(int*)__STARTUP__);	//Use value from 0x0001(__STARTUP__) as seed for random
   add_block();
-  add_block();//TODO: bring back to only 2 times after testing
-  /*add_block();
   add_block();
-  add_block();
-  add_block();*/
 }
 
 //shift the numbers a direction
@@ -359,6 +376,12 @@ void main(void)
 {
   char pad;	// controller flags
 
+  show_title_screen(game_title_pal, game_title_rle);
+  while(1){
+    pad = pad_poll(0);
+    if(pad & PAD_START)	break;
+  }
+  
   setup_graphics();
   init_gameboard();
   draw_gameboard();
@@ -379,3 +402,5 @@ void main(void)
     }
   }
 }
+
+//#link "title.s"
