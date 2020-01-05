@@ -486,9 +486,24 @@ bool game_win_lose() {
 
 //let the player know they won/lost
 void draw_winscreen(int state) {
-  vram_adr(NTADR_A(9,20));
+  //we run out of time to draw this, causing it to not get into vram
+  //instead we wait a frame...
+  ppu_on_all();
+  ppu_off();
+  vram_adr(NTADR_A(12,24));
   if(state == GAME_WIN) vram_write("WINNER!", 7);
   if(state == GAME_LOSE) vram_write("GAME OVER", 9);
+  vram_adr(NTADR_A(11,25));
+  vram_write("PRESS START", 11);
+}
+
+void reset_gameboard() {
+  int i, j;
+  for( j = 0; j < BOARD_W ; j++) {
+    for( i = 0; i < BOARD_H ; i++) {
+      board[i][j] = 0;
+    }
+  }
 }
 
 void main(void)
@@ -502,23 +517,42 @@ void main(void)
   }
   
   setup_graphics();
-  init_gameboard();
+  /*init_gameboard();
   draw_gameboard();
   // enable rendering
-  ppu_on_all();
-  // infinite loop
-  while (1) {
-    int state;
-    ppu_off();
-    pad = pad_poll(0);
-    if(is_valid_move(pad)) move_gameboard(pad);
-    state = game_win_lose();
-    if(state != 0) draw_winscreen(state);
+  ppu_on_all();*/
+  // infinite loops
+  while(1) {
+    init_gameboard();
+    draw_gameboard();
+    // enable rendering
     ppu_on_all();
-
-    while (!pad_trigger(0)) {
-      ppu_wait_nmi();
+    
+    while (1) {
+      int state;
+      ppu_off();
+      pad = pad_poll(0);
+      state = game_win_lose();
+      //TODO: fix this state logic block somehow....
+      if(state != 0) {
+        draw_winscreen(state);
+        if(pad & PAD_START) break;
+      } else {
+        if(is_valid_move(pad)) move_gameboard(pad);
+        state = game_win_lose();
+        if(state != 0) {
+          draw_winscreen(state);
+          //if(pad & PAD_START) break;
+        }
+      }
+      ppu_on_all();
+  
+      while (!pad_trigger(0)) {
+        ppu_wait_nmi();
+      }
     }
+    //I keep this down here so I can pre-populate the array during testing
+    reset_gameboard();
   }
 }
 
