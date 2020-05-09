@@ -77,8 +77,12 @@ void show_title_screen(const byte* pal, const byte* rle) {
 void setup_graphics() {
   // clear sprites
   oam_clear();
+  // clear buffer
+  vrambuf_clear();
   // set palette colors
   pal_all(game_title_pal);
+  // set NMI handler
+  set_vram_update(updbuf);
   //init ppu
   ppu_on_all();
 }
@@ -87,140 +91,122 @@ void fill_tile(int x, int y, int val) {
   int nx = (x * 4) + 9;
   int ny = (y * 4) + 9;
   
-  int vals[2][2] = {
+  char vals[2][2] = {
     { 0, 0},
     { 0, 0}
   };
   switch (val) {
     case 2:
       vals[0][0] = 0x03;
-      vals[1][0] = 0x03;
       vals[0][1] = 0x03;
+      vals[1][0] = 0x03;
       vals[1][1] = 0xB2;      
       break;
     case 4:
       vals[0][0] = 0x03;
-      vals[1][0] = 0x03;
       vals[0][1] = 0x03;
+      vals[1][0] = 0x03;
       vals[1][1] = 0xB4;     
       break;
     case 8:
       vals[0][0] = 0x03;
-      vals[1][0] = 0x03;
       vals[0][1] = 0x03;
+      vals[1][0] = 0x03;
       vals[1][1] = 0xB8;      
       break;
     case 16:
       vals[0][0] = 0x03;
-      vals[1][0] = 0x03;
-      vals[0][1] = 0xB1;
+      vals[0][1] = 0x03;
+      vals[1][0] = 0xB1;
       vals[1][1] = 0xB6;      
       break;
     case 32:
       vals[0][0] = 0x03;
-      vals[1][0] = 0x03;
-      vals[0][1] = 0xB3;
+      vals[0][1] = 0x03;
+      vals[1][0] = 0xB3;
       vals[1][1] = 0xB2;      
       break;
     case 64:
       vals[0][0] = 0x03;
-      vals[1][0] = 0x03;
-      vals[0][1] = 0xB6;
+      vals[0][1] = 0x03;
+      vals[1][0] = 0xB6;
       vals[1][1] = 0xB4;      
       break;
     case 128:
       vals[0][0] = 0x03;
-      vals[1][0] = 0xB1;
-      vals[0][1] = 0xB2;
+      vals[0][1] = 0xB1;
+      vals[1][0] = 0xB2;
       vals[1][1] = 0xB8;      
       break;
     case 256:
       vals[0][0] = 0x03;
-      vals[1][0] = 0xB2;
-      vals[0][1] = 0xB5;
+      vals[0][1] = 0xB2;
+      vals[1][0] = 0xB5;
       vals[1][1] = 0xB6;      
       break;
     case 512:
       vals[0][0] = 0x03;
-      vals[1][0] = 0xB5;
-      vals[0][1] = 0xB1;
+      vals[0][1] = 0xB5;
+      vals[1][0] = 0xB1;
       vals[1][1] = 0xB2;      
       break;
     case 1024:
       vals[0][0] = 0xB1;
-      vals[1][0] = 0xB0;
-      vals[0][1] = 0xB2;
+      vals[0][1] = 0xB0;
+      vals[1][0] = 0xB2;
       vals[1][1] = 0xB4;      
       break;
     case 2048:
       vals[0][0] = 0xB2;
-      vals[1][0] = 0xB0;
-      vals[0][1] = 0xB4;
+      vals[0][1] = 0xB0;
+      vals[1][0] = 0xB4;
       vals[1][1] = 0xB8;      
       break;
       
     default:
       //set it blank
+      /* // Debug output version
+      vals[0][0] = 4*(4*x+y)+0;
+      vals[0][1] = 4*(4*x+y)+1;
+      vals[1][0] = 4*(4*x+y)+2;
+      vals[1][1] = 4*(4*x+y)+3;
+      */
       vals[0][0] = 0x03;
-      vals[1][0] = 0x03;
       vals[0][1] = 0x03;
+      vals[1][0] = 0x03;
       vals[1][1] = 0x03;
   }
-  //I don't quite know why I have to swap x and y here... but I do... 
-  //TODO figure that out
-  vram_adr(NTADR_A(ny,nx));
-  vram_put(vals[0][0]);
-  vram_adr(NTADR_A(ny+1,nx));
-  vram_put(vals[1][0]);
-  vram_adr(NTADR_A(ny,nx+1));
-  vram_put(vals[0][1]);
-  vram_adr(NTADR_A(ny+1,nx+1));
-  vram_put(vals[1][1]);
+  vrambuf_put(NTADR_A(nx,ny),vals[0],2);
+  vrambuf_put(NTADR_A(nx,ny+1),vals[1],2);
 }
 
-//take the current state and draw it, nothing too hard
-void draw_gameboard() {
-  //TODO: use the frame buffers to draw this without actually flickering the screen so much.
-  int i;
-  int j;
-  //wait on frame
+void draw_gameboard_bg() {
   ppu_wait_frame();
-  // disable rendering
   ppu_off();
-  // set palette, virtual bright to 0 (total black)
-  //pal_bright(0);
   // unpack nametable into the VRAM
   vram_adr(NAMETABLE_A);
   vram_unrle(game_board_rle);
-  
-  
-  /*//for now we just use the buildin text output routines, but will change to something visually nicer later
-  int i = 0;
-  char buf[32];
-  vrambuf_clear();
+  ppu_on_all();
+}
 
-  //header
-  vram_adr(NTADR_A(19,2));
-  vram_write("2048", 4);
-  
-  //trust me, works so much better then my first attempt
-  for( i = BOARD_H - 1; i >= 0; i--) {
-    memset(buf, 0, sizeof(buf));
-    sprintf(buf, "%4d %4d %4d %4d", board[i][0], board[i][1], board[i][2], board[i][3]);
-    vram_adr(NTADR_A(4, 5 + ( i * 4 )));
-    vram_write(buf, sizeof(buf));
-  }*/
-  
-  for( i = BOARD_H - 1; i >= 0; i--) {
-    for( j = BOARD_W - 1; j >= 0; j--) {
-      fill_tile(i,j,board[i][j]);
+//take the current state and draw it
+void draw_gameboard() {
+  int i;
+  int j;
+  //We run this twice, as it is too many updates for the code otherwise
+  //TODO: genericize this for larger boards.
+  for( i = 0; i < BOARD_H / 2; i++) {
+    for( j = 0; j < BOARD_W; j++) {
+      fill_tile(i, j, board[j][i]);
     }
   }
-  
-  // enable rendering
-  ppu_on_all();
-  // fade in from black
-  //fade_in();
+  vrambuf_flush();
+  for( i = BOARD_H / 2; i < BOARD_H; i++) {
+    for( j = 0; j < BOARD_W; j++) {
+      fill_tile(i, j, board[j][i]);
+    }
+  }
+  vrambuf_flush();
 }
 
 //add a block to the board
@@ -241,11 +227,7 @@ void add_block() {
 
 //init the board with some values
 void init_gameboard() {
-  //int i = 0;
-  //int j = 0;
-  
-  //init random number generator....
-  //srand(0);
+  //init random number generator, use a framecounter to make it more random
   srand(nesclock());
   add_block();
   add_block();
@@ -386,27 +368,19 @@ void move_merge(char dir) {
 //let's move the numbers...
 void move_gameboard(char pad) {
    if (pad & PAD_LEFT) {
-     vram_adr(NTADR_A(7,2));
-     vram_write("\x1e", 1);
      //we do the shift twice to handle gaps after merge
      move_shift(PAD_LEFT);
      move_merge(PAD_LEFT);
      move_shift(PAD_LEFT);
    } else if (pad & PAD_RIGHT) {
-     vram_adr(NTADR_A(7,2));
-     vram_write("\x1f", 1);
      move_shift(PAD_RIGHT);
      move_merge(PAD_RIGHT);
      move_shift(PAD_RIGHT);
    } else if (pad & PAD_UP) {
-     vram_adr(NTADR_A(7,2));
-     vram_write("\x1c", 1);
      move_shift(PAD_UP);
      move_merge(PAD_UP);
      move_shift(PAD_UP);
    } else if (pad & PAD_DOWN) {
-     vram_adr(NTADR_A(7,2));
-     vram_write("\x1d", 1);
      move_shift(PAD_DOWN);
      move_merge(PAD_DOWN);
      move_shift(PAD_DOWN);
@@ -486,10 +460,12 @@ void draw_winscreen(int state) {
   //we run out of time to draw this, causing it to not get into vram
   //instead we wait a frame...
   ppu_on_all();
+  ppu_wait_frame();
   ppu_off();
   vram_adr(NTADR_A(12,24));
   if(state == GAME_WIN) vram_write("WINNER!", 7);
   if(state == GAME_LOSE) vram_write("GAME OVER", 9);
+  //vrambuf TODO
   vram_adr(NTADR_A(11,25));
   vram_write("PRESS START", 11);
 }
@@ -522,13 +498,11 @@ void main(void)
   // infinite loops
   while(1) {
     init_gameboard();
+    draw_gameboard_bg();
     draw_gameboard();
-    // enable rendering
-    ppu_on_all();
-    
+ 
     while (1) {
       int state;
-      ppu_off();
       pad = pad_poll(0);
       state = game_win_lose();
       //TODO: fix this state logic block somehow....
@@ -543,8 +517,6 @@ void main(void)
           //if(pad & PAD_START) break;
         }
       }
-      ppu_on_all();
-  
       while (!pad_trigger(0)) {
         ppu_wait_nmi();
       }
