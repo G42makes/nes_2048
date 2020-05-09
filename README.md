@@ -29,8 +29,8 @@ These are items that I want to do to learn new things about coding on the NES, a
   * Change W/H of playing board
   * Change win score
 * Save score
+* Makefile for local compile
 
 
 # Bugs
-* On a real NES, it likes to randomly glitch out and lock up. I think it's related to graphics timing issues.
-* Flicker between moves
+* Currently no known bugs, but I figure that will change if anyone else tests.
