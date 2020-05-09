@@ -457,17 +457,15 @@ bool game_win_lose() {
 
 //let the player know they won/lost
 void draw_winscreen(int state) {
-  //we run out of time to draw this, causing it to not get into vram
-  //instead we wait a frame...
-  ppu_on_all();
+  char str[9];
+  memset(str, 0, sizeof(str));
   ppu_wait_frame();
-  ppu_off();
-  vram_adr(NTADR_A(12,24));
-  if(state == GAME_WIN) vram_write("WINNER!", 7);
-  if(state == GAME_LOSE) vram_write("GAME OVER", 9);
-  //vrambuf TODO
-  vram_adr(NTADR_A(11,25));
-  vram_write("PRESS START", 11);
+  if(state == GAME_WIN)  sprintf(str, "WINNER!");
+  if(state == GAME_LOSE) sprintf(str, "GAME OVER");
+  vrambuf_put(NTADR_A(12,24), str, 9);
+  sprintf(str, "PRESS START");
+  vrambuf_put(NTADR_A(11,25), str, 11);
+  vrambuf_flush();
 }
 
 void reset_gameboard() {
