@@ -18,11 +18,18 @@ I have also used the .rom file on an Everdrive in an original NES with the HiDef
 # TODO
 These are items that I want to do to learn new things about coding on the NES, and will make the game better.
 
-* Switch to buffering based graphics
 * Animate the moves/merges with sprites
 * Add some sound
 * Add more interesting stuff to the playfield(ie game name at the top, more interesting graphics for win/loss)
 * Timer
+* Options Page
+  * Pallet choice
+  * Tile choice
+  * Background choice
+  * Change W/H of playing board
+  * Change win score
+* Save score
+
 
 # Bugs
 * On a real NES, it likes to randomly glitch out and lock up. I think it's related to graphics timing issues.
