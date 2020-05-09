@@ -19,9 +19,6 @@
 #include "vrambuf.h"
 //#link "vrambuf.c"
 
-//Use this constantly changing value to populate the random number generator
-#define __STARTUP__ 0x0001
-
 //Import the pallet and startup screen
 extern const byte game_title_pal[16];
 extern const byte game_title_rle[];
@@ -82,6 +79,8 @@ void setup_graphics() {
   oam_clear();
   // set palette colors
   pal_all(game_title_pal);
+  //init ppu
+  ppu_on_all();
 }
 
 void fill_tile(int x, int y, int val) {
@@ -184,6 +183,8 @@ void draw_gameboard() {
   //TODO: use the frame buffers to draw this without actually flickering the screen so much.
   int i;
   int j;
+  //wait on frame
+  ppu_wait_frame();
   // disable rendering
   ppu_off();
   // set palette, virtual bright to 0 (total black)
@@ -245,7 +246,7 @@ void init_gameboard() {
   
   //init random number generator....
   //srand(0);
-  srand(*(int*)__STARTUP__);	//Use value from 0x0001(__STARTUP__) as seed for random
+  srand(nesclock());
   add_block();
   add_block();
 }
@@ -506,13 +507,14 @@ void main(void)
 {
   char pad;	// controller flags
 
+  setup_graphics();
   show_title_screen(game_title_pal, game_title_rle);
   while(1){
     pad = pad_poll(0);
     if(pad & PAD_START)	break;
   }
   
-  setup_graphics();
+  
   /*init_gameboard();
   draw_gameboard();
   // enable rendering
