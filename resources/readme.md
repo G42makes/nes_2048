@@ -4,3 +4,4 @@ Using NES Screen Tool 2.4(in Wine on Mac actually, works great). https://shiru.u
 
 is the command that is useful, modify line length by changing the 32 and 135 values
 
+Can also just output the .asm file from the nametable menu(set the rle option).
