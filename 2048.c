@@ -11,9 +11,8 @@
 // link the pattern table into CHR ROM
 //#link "chr_generic.s"
 
-// BCD arithmetic support
-#include "bcd.h"
-//#link "bcd.c"
+//link in the titles file
+//#link "title.s"
 
 // VRAM update buffer
 #include "vrambuf.h"
@@ -34,6 +33,8 @@ extern const byte game_board_rle[];
 #define GAME_LOSE 1
 #define GAME_WIN 2
 
+//For testing, allow editing of win value
+#define WIN_SCORE 2048
 
 //Let's store the 2048 board, for now we will just use ints
 int board[BOARD_H][BOARD_W] = {
@@ -42,35 +43,6 @@ int board[BOARD_H][BOARD_W] = {
   { 0, 0, 0, 0},
   { 0, 0, 0, 0}
 };
-
-//Borrow routine to fade in the splash screen.
-void fade_in() {
-  byte vb;
-  for (vb=0; vb<=4; vb++) {
-    // set virtual bright value
-    pal_bright(vb);
-    // wait for 4/60 sec
-    ppu_wait_frame();
-    ppu_wait_frame();
-    ppu_wait_frame();
-    ppu_wait_frame();
-  }
-}
-//and borrowed routine to display the spash screen.
-void show_title_screen(const byte* pal, const byte* rle) {
-  // disable rendering
-  ppu_off();
-  // set palette, virtual bright to 0 (total black)
-  pal_bg(pal);
-  pal_bright(0);
-  // unpack nametable into the VRAM
-  vram_adr(NAMETABLE_A);
-  vram_unrle(rle);
-  // enable rendering
-  ppu_on_all();
-  // fade in from black
-  fade_in();
-}
 
 
 // setup PPU and tables
@@ -87,14 +59,75 @@ void setup_graphics() {
   ppu_on_all();
 }
 
+//Borrow routine to fade in the splash screen.
+void fade_in() {
+  byte vb;
+  for (vb=0; vb<=4; vb++) {
+    // set virtual bright value
+    pal_bright(vb);
+    // wait for 4/60 sec
+    ppu_wait_frame();
+    ppu_wait_frame();
+    ppu_wait_frame();
+    ppu_wait_frame();
+  }
+}
+
+//and borrowed routine to display the spash screen.
+void show_title_screen(const byte* pal, const byte* rle) {
+  // disable rendering
+  ppu_off();
+  // set palette, virtual bright to 0 (total black)
+  pal_bg(pal);
+  pal_bright(0);
+  // unpack nametable into the VRAM
+  vram_adr(NAMETABLE_A);
+  vram_unrle(rle);
+  //set it to faded out before enabling
+  pal_bright(0);
+  // enable rendering
+  ppu_on_all();
+  // fade in from black
+  fade_in();
+}
+
+//add a block to the board
+void add_block() {
+  bool done = false;
+  int v = rand() % 10 ? 2: 4;	//1 in 10 will be a 4 block
+  
+  while(!done) {
+    int i = rand() % BOARD_H;
+    int j = rand() % BOARD_W;
+    
+    if(board[i][j] == 0) {
+      board[i][j] = v;
+      done = true;
+    }
+  }
+}
+
+//init the board with some values
+void init_gameboard() {
+  //init random number generator, use a framecounter to make it more random
+  srand(nesclock());
+  add_block();
+  add_block();
+}
+
+// put the specified value in the x,y location requested on the playboard
 void fill_tile(int x, int y, int val) {
+  //calculate the offset for each direction
   int nx = (x * 4) + 9;
   int ny = (y * 4) + 9;
   
+  //start with an empty array
   char vals[2][2] = {
     { 0, 0},
     { 0, 0}
   };
+  //update the values in the array based on the request
+  // TODO: is there a more effecient way to store this data?
   switch (val) {
     case 2:
       vals[0][0] = 0x03;
@@ -197,43 +230,19 @@ void draw_gameboard() {
   //TODO: genericize this for larger boards.
   for( i = 0; i < BOARD_H / 2; i++) {
     for( j = 0; j < BOARD_W; j++) {
-      fill_tile(i, j, board[j][i]);
+      fill_tile(i, j, board[i][j]);
     }
   }
   vrambuf_flush();
   for( i = BOARD_H / 2; i < BOARD_H; i++) {
     for( j = 0; j < BOARD_W; j++) {
-      fill_tile(i, j, board[j][i]);
+      fill_tile(i, j, board[i][j]);
     }
   }
   vrambuf_flush();
 }
 
-//add a block to the board
-void add_block() {
-  bool done = false;
-  int v = rand() % 10 ? 2: 4;	//1 in 10 will be a 4 block
-  
-  while(!done) {
-    int i = rand() % BOARD_H;
-    int j = rand() % BOARD_W;
-    
-    if(board[i][j] == 0) {
-      board[i][j] = v;
-      done = true;
-    }
-  }
-}
-
-//init the board with some values
-void init_gameboard() {
-  //init random number generator, use a framecounter to make it more random
-  srand(nesclock());
-  add_block();
-  add_block();
-}
-
-//shift the numbers a direction
+//shift the numbers a direction, no merging of matched values
 void move_shift(char dir) {
   int i = 0;
   int j = 0;
@@ -241,7 +250,7 @@ void move_shift(char dir) {
   
   
   switch (dir) {
-    case PAD_LEFT: 
+    case PAD_UP: 
       for ( i = BOARD_H - 1; i >= 0; i--) {
         c = 0;
         for( j = 0; j < BOARD_W ; j++) {	
@@ -256,7 +265,7 @@ void move_shift(char dir) {
       }
       break;
       
-    case PAD_RIGHT:
+    case PAD_DOWN:
       for ( i = BOARD_H - 1; i >= 0; i--) {
         c = 0;
         for( j = BOARD_W - 1; j >= 0 ; j--) {	
@@ -271,7 +280,7 @@ void move_shift(char dir) {
       }
       break;
       
-    case PAD_UP:
+    case PAD_LEFT:
       for( j = 0; j < BOARD_W ; j++) {
         c = 0;
         for( i = 0; i < BOARD_H ; i++) {
@@ -286,7 +295,7 @@ void move_shift(char dir) {
       }
       break;
       
-    case PAD_DOWN:
+    case PAD_RIGHT:
       for ( j = BOARD_W - 1; j >= 0; j--) {
         c = 0;
         for( i = BOARD_H - 1; i >= 0 ; i--) {	
@@ -313,7 +322,7 @@ void move_merge(char dir) {
   int i = 0;
   int j = 0;
   switch (dir) {
-    case PAD_LEFT: 
+    case PAD_UP: 
       for ( i = BOARD_H - 1; i >= 0; i--) {
         //BOARD_W - 1 here, as there is no match past the edge of the board
         for( j = 0; j < BOARD_W - 1 ; j++) {
@@ -324,7 +333,7 @@ void move_merge(char dir) {
         }
       }
       break;
-    case PAD_RIGHT:
+    case PAD_DOWN:
       for ( i = BOARD_H - 1; i >= 0; i--) {
         //here we have j >= 1 to avoid going past the edge
         for( j = BOARD_W - 1; j >= 1 ; j--) {
@@ -336,7 +345,7 @@ void move_merge(char dir) {
       }
       break;
       
-    case PAD_UP:
+    case PAD_LEFT:
       for( j = 0; j < BOARD_W ; j++) {
         //again BOARD_H - 1 to avoid the edge
         for( i = 0; i < BOARD_H - 1; i++) {
@@ -348,7 +357,7 @@ void move_merge(char dir) {
       }      
       break;
       
-    case PAD_DOWN:
+    case PAD_RIGHT:
       for( j = 0; j < BOARD_W ; j++) {
         //again to i >= 1 to avoid the edge
         for( i = BOARD_H - 1; i >= 1 ; i--) {	
@@ -365,30 +374,31 @@ void move_merge(char dir) {
   }
 }
 
-//let's move the numbers...
+//let's move and merge the numbers...
 void move_gameboard(char pad) {
-   if (pad & PAD_LEFT) {
-     //we do the shift twice to handle gaps after merge
-     move_shift(PAD_LEFT);
-     move_merge(PAD_LEFT);
-     move_shift(PAD_LEFT);
-   } else if (pad & PAD_RIGHT) {
-     move_shift(PAD_RIGHT);
-     move_merge(PAD_RIGHT);
-     move_shift(PAD_RIGHT);
-   } else if (pad & PAD_UP) {
-     move_shift(PAD_UP);
-     move_merge(PAD_UP);
-     move_shift(PAD_UP);
-   } else if (pad & PAD_DOWN) {
-     move_shift(PAD_DOWN);
-     move_merge(PAD_DOWN);
-     move_shift(PAD_DOWN);
-   }
-  
-   add_block();
-   draw_gameboard();
+  if (pad & PAD_LEFT) {
+    //we do the shift twice to handle gaps after merge
+    move_shift(PAD_LEFT);
+    move_merge(PAD_LEFT);
+    move_shift(PAD_LEFT);
+  } else if (pad & PAD_RIGHT) {
+    move_shift(PAD_RIGHT);
+    move_merge(PAD_RIGHT);
+    move_shift(PAD_RIGHT);
+  } else if (pad & PAD_UP) {
+    move_shift(PAD_UP);
+    move_merge(PAD_UP);
+    move_shift(PAD_UP);
+  } else if (pad & PAD_DOWN) {
+    move_shift(PAD_DOWN);
+    move_merge(PAD_DOWN);
+    move_shift(PAD_DOWN);
+  }
 
+  //add a block to somewhere empty on the board
+  add_block();
+  //and draw the update
+  draw_gameboard();
 }
 
 //check a pair of values if they are a valid move pair
@@ -403,25 +413,25 @@ bool is_valid_move(char pad) {
   int i = 0;
   int j = 0;
 
-  if (pad & PAD_LEFT) {
+  if (pad & PAD_UP) {
     for ( i = BOARD_H - 1; i >= 0; i--) {
       for( j = 0; j < BOARD_W - 1 ; j++) {
         if(is_valid_pair(board[i][j], board[i][j+1])) return true;
       }
     }
-  } else if (pad & PAD_RIGHT) {
+  } else if (pad & PAD_DOWN) {
     for ( i = BOARD_H - 1; i >= 0; i--) {
       for( j = BOARD_W - 1; j >= 1 ; j--) {
         if(is_valid_pair(board[i][j], board[i][j-1])) return true;
       }
     }
-  } else if (pad & PAD_UP) {
+  } else if (pad & PAD_LEFT) {
     for( j = 0; j < BOARD_W ; j++) {
       for( i = 0; i < BOARD_H - 1; i++) {
         if(is_valid_pair(board[i][j], board[i+1][j])) return true;
       }
     }
-  } else if (pad & PAD_DOWN) {
+  } else if (pad & PAD_RIGHT) {
     for( j = 0; j < BOARD_W ; j++) {
       for( i = BOARD_H - 1; i >= 1 ; i--) {	
         if(is_valid_pair(board[i][j], board[i-1][j])) return true;
@@ -441,7 +451,7 @@ bool game_win_lose() {
 
   for( i = 0; i < BOARD_H; i++) {
     for( j = 0; j < BOARD_W; j++) {
-      if(board[i][j] == 2048) return GAME_WIN;	//TODO make this changable for harder modes
+      if(board[i][j] == WIN_SCORE) return GAME_WIN;	//TODO make this changable for harder modes
     }
   }
   //we have to check for continue after win, otherwise it often will find a 0 first.
@@ -481,20 +491,19 @@ void main(void)
 {
   char pad;	// controller flags
 
+  //run all the video setup routines
   setup_graphics();
-  show_title_screen(game_title_pal, game_title_rle);
-  while(1){
-    pad = pad_poll(0);
-    if(pad & PAD_START)	break;
-  }
-  
-  
-  /*init_gameboard();
-  draw_gameboard();
-  // enable rendering
-  ppu_on_all();*/
-  // infinite loops
+    
   while(1) {
+    
+    //show the title screen and wait for input
+    show_title_screen(game_title_pal, game_title_rle);
+    while(1){
+      pad = pad_poll(0);
+      if(pad & PAD_START)	break;
+    }
+
+    // initialize and draw the initial gameboard.
     init_gameboard();
     draw_gameboard_bg();
     draw_gameboard();
@@ -519,9 +528,8 @@ void main(void)
         ppu_wait_nmi();
       }
     }
-    //I keep this down here so I can pre-populate the array during testing
+    //and reset the board once game is done
     reset_gameboard();
   }
 }
 
-//#link "title.s"
