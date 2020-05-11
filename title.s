@@ -1,6 +1,7 @@
 .export _game_title_pal
 .export _game_title_rle
 .export _game_board_rle
+.export _game_options_rle
 
 ;;{pal:"nes",layout:"nes"};;
 _game_title_pal:
