@@ -273,7 +273,7 @@ void draw_gameboard_bg() {
 void draw_gameboard() {
   int i;
   int j;
-  char tmp[20];
+  //char tmp[20];
   //We run this twice, as it is too many updates for the code otherwise
   //TODO: genericize this for larger boards.
   for( i = 0; i < board_height / 2; i++) {
@@ -289,6 +289,9 @@ void draw_gameboard() {
   }
   vrambuf_flush();
   
+  
+  //debug code
+  /*
   for( i = 0; i<4; i++){
     for( j=0; j<4; j++){
       tmp[i*5 +j] = (char)(board[i][j] + 0x30);
@@ -296,7 +299,7 @@ void draw_gameboard() {
     tmp[i*5+4]=0;
   }
   vrambuf_put(NTADR_A(5,5),tmp,20);
-  vrambuf_flush();
+  vrambuf_flush();*/
 }
 
 //shift the numbers a direction, no merging of matched values
