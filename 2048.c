@@ -48,7 +48,7 @@ byte win_score = 11;	//2^11 = 2048
 
 //Board definitions
 byte board_width = 4;
-byte board_height = 3;
+byte board_height = 4;
 #define BOARD_MAX_HEIGHT = 7 //might be into the borders
 #define BOARD_MIN_HEIGHT = 2 //does this make sense?
 #define BOARD_MAX_WIDTH  = 8 //might be into the borders
@@ -588,7 +588,7 @@ void main(void)
  
     while (1) {
       int state;
-      pad = pad_poll(0);
+      pad = pad_poll(0);	//TODO: on some emulators(FCEUX) this can sometimes act up.
       state = game_win_lose();
       //TODO: fix this state logic block somehow....
       if(state != 0) {
