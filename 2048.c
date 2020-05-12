@@ -33,12 +33,12 @@ extern const byte game_options_rle[];
 // so each element can store up to 2^256, but we can only use 4 numbers
 // to display, so max score is 2^13=8192.
 //TODO, make this more dynamic based on board size
-byte board[4][4] = {
+/*byte board[4][4] = {
   { 0, 0, 0, 0},
   { 0, 0, 0, 0},
   { 0, 0, 0, 0},
   { 0, 0, 0, 0}
-};
+};*/
 
 //Setup the initial state for all options:
 //Win Score, max is based on we can only print 4 numers per tile
@@ -48,17 +48,27 @@ byte win_score = 11;	//2^11 = 2048
 
 //Board definitions
 byte board_width = 4;
-byte board_height = 4;
-#define BOARD_MAX_HEIGHT = 7; //might be into the borders
-#define BOARD_MIN_HEIGHT = 2; //does this make sense?
-#define BOARD_MAX_WIDTH  = 8; //might be into the borders
-#define BOARD_MIN_WIDTH  = 2; //does this make sense?
+byte board_height = 3;
+#define BOARD_MAX_HEIGHT = 7 //might be into the borders
+#define BOARD_MIN_HEIGHT = 2 //does this make sense?
+#define BOARD_MAX_WIDTH  = 8 //might be into the borders
+#define BOARD_MIN_WIDTH  = 2 //does this make sense?
+#define BOARD_MAX	 = (BOARD_MAX_HEIGHT * BOARD_MAX_WIDTH)
+//Based on the max values above for board size, let's grab some ram to store
+//  the board. We store the power of 2 in here, as it lets us go bigger on 
+//  the single bytes we use.
+//byte board[BOARD_MAX];
+//byte board[BOARD_MAX_WIDTH][BOARD_MAX_HEIGHT];
+byte board[8][7];
 
 //Visual settings
 //not used yet
 byte tile_style = 0;
-byte pallette = 0;
+byte pallette  = 0;
 byte background = 0;
+
+
+
 
 // setup PPU and tables
 void setup_graphics() {
@@ -132,11 +142,11 @@ void add_block() {
   int v = rand() % 10 ? 1: 2;	//1 in 10 will be a 2^2 block
   
   while(!done) {
-    int i = rand() % board_height;
-    int j = rand() % board_width;
+    int x = rand() % board_width;
+    int y = rand() % board_height;
     
-    if(board[i][j] == 0) {
-      board[i][j] = v;
+    if(board[x][y] == 0) {
+      board[x][y] = v;
       done = true;
     }
   }
@@ -145,6 +155,7 @@ void add_block() {
 //init the board with some values
 void init_gameboard() {
   //init random number generator, use a framecounter to make it more random
+  memset(board, 0, sizeof(board));
   srand(nesclock());
   add_block();
   add_block();
@@ -231,17 +242,24 @@ void fill_tile(int x, int y, byte pow) {
       vals[1][1] = 0xB8;      
       break;
     case 12:		//4096
-      vals[0][0] = 0xB1;
+      vals[0][0] = 0xB4;
       vals[0][1] = 0xB0;
-      vals[1][0] = 0xB2;
-      vals[1][1] = 0xB4;      
+      vals[1][0] = 0xB9;
+      vals[1][1] = 0xB6;      
       break;
     case 13:		//8192
-      vals[0][0] = 0xB2;
-      vals[0][1] = 0xB0;
-      vals[1][0] = 0xB4;
-      vals[1][1] = 0xB8;      
+      vals[0][0] = 0xB8;
+      vals[0][1] = 0xB1;
+      vals[1][0] = 0xB9;
+      vals[1][1] = 0xB2;      
       break;
+    case 255:		//Debug - A
+      vals[0][0] = 0x03;
+      vals[0][1] = 0x03;
+      vals[1][0] = 0x03;
+      vals[1][1] = 0x41;      
+      break;
+    
       
     default:
       //set it blank
@@ -271,103 +289,103 @@ void draw_gameboard_bg() {
 
 //take the current state and draw it
 void draw_gameboard() {
-  int i;
-  int j;
-  //char tmp[20];
+  int x;
+  int y;
+  char tmp[63];
   //We run this twice, as it is too many updates for the code otherwise
   //TODO: genericize this for larger boards.
-  for( i = 0; i < board_height / 2; i++) {
-    for( j = 0; j < board_width; j++) {
-      fill_tile(i, j, board[i][j]);
+  for( x = 0; x < board_width / 2; x++) {
+    for( y = 0; y < board_height; y++) {
+      fill_tile(x, y, board[x][y]);
     }
   }
   vrambuf_flush();
-  for( i = board_height / 2; i < board_height; i++) {
-    for( j = 0; j < board_width; j++) {
-      fill_tile(i, j, board[i][j]);
+  for( x = board_width / 2; x < board_width; x++) {
+    for( y = 0; y < board_height; y++) {
+      fill_tile(x, y, board[x][y]);
     }
   }
   vrambuf_flush();
   
   
   //debug code
-  /*
-  for( i = 0; i<4; i++){
-    for( j=0; j<4; j++){
-      tmp[i*5 +j] = (char)(board[i][j] + 0x30);
+  for( x = 0; x < board_width;  x++){
+    for( y=0; y < board_height; y++){
+      tmp[y*(board_width + 1) + x] = (char)(board[x][y] + 0x30);
     }
-    tmp[i*5+4]=0;
+    tmp[x*(board_width + 1)+board_height]=0;
   }
-  vrambuf_put(NTADR_A(5,5),tmp,20);
-  vrambuf_flush();*/
+  vrambuf_put(NTADR_A(1,1),tmp,63);
+  vrambuf_flush();
 }
 
 //shift the numbers a direction, no merging of matched values
-void move_shift(char dir) {
-  int i = 0;
-  int j = 0;
-  int c = 0;
-  
+void move_shift(byte dir) {
+  byte x = 0;
+  byte y = 0;
+  byte c = 0;
   
   switch (dir) {
     case PAD_UP: 
-      for ( i = board_height - 1; i >= 0; i--) {
+      //because we are using unsigned bytes here, can't use x >= 0 as it's always true
+      //  instead we use x != 255 due to that being the wraparound
+      for ( x = board_width - 1; x != 255; x--) {
         c = 0;
-        for( j = 0; j < board_width ; j++) {	
-          if (board[i][j] != 0) {
-            board[i][c] = board[i][j];
+        for( y = 0; y < board_height ; y++) {	
+          if (board[x][y] != 0) {
+            board[x][c] = board[x][y];
             c++;
           }
         }
-        for( j = c; j < board_width; j++) {
-          board[i][j] = 0;
+        for( y = c; y < board_height; y++) {
+          board[x][y] = 0;
         }
       }
       break;
       
     case PAD_DOWN:
-      for ( i = board_height - 1; i >= 0; i--) {
+      for ( x = board_width - 1; x != 255; x--) {
         c = 0;
-        for( j = board_width - 1; j >= 0 ; j--) {	
-          if (board[i][j] != 0) {
-            board[i][3 - c] = board[i][j];
+        for( y = board_height - 1; y != 255 ; y--) {	
+          if (board[x][y] != 0) {
+            board[x][board_height - 1 - c] = board[x][y];
             c++;
           }
         }
-        for( j = board_width - 1 - c; j >= 0; j--) {
-          board[i][j] = 0;
+        for( y = board_height - 1 - c; y != 255; y--) {
+          board[x][y] = 0;
         }
       }
       break;
       
     case PAD_LEFT:
-      for( j = 0; j < board_width ; j++) {
+      for( y = 0; y < board_height ; y++) {
         c = 0;
-        for( i = 0; i < board_height ; i++) {
-          if (board[i][j] != 0) {
-            board[c][j] = board[i][j];
+        for( x = 0; x < board_width ; x++) {
+          if (board[x][y] != 0) {
+            board[c][y] = board[x][y];
             c++;
           }
         }
-        for( i = c; i < board_width; i++) {
-          board[i][j] = 0;
+        for( x = c; x < board_width; x++) {
+          board[x][y] = 0;
         }
       }
       break;
       
     case PAD_RIGHT:
-      for ( j = board_width - 1; j >= 0; j--) {
+      for ( y = board_height - 1; y != 255; y--) {
         c = 0;
-        for( i = board_height - 1; i >= 0 ; i--) {	
-          if (board[i][j] != 0) {
-            board[3 - c][j] = board[i][j];
+        for( x = board_width - 1; x != 255 ; x--) {	
+          if (board[x][y] != 0) {
+            board[board_width - 1 - c][y] = board[x][y];
             c++;
           }
         }
-        for( i = board_height - 1 - c; i >= 0; i--) {
-          board[i][j] = 0;
+        for( x = board_width - 1 - c; x != 255; x--) {
+          board[x][y] = 0;
         }
-      }
+      }      
       break;
       
     default:
@@ -379,51 +397,47 @@ void move_shift(char dir) {
 
 //do merges based on direction pressed
 void move_merge(char dir) {
-  int i = 0;
-  int j = 0;
+  byte x = 0;
+  byte y = 0;
   switch (dir) {
     case PAD_UP: 
-      for ( i = board_height - 1; i >= 0; i--) {
-        //board_width - 1 here, as there is no match past the edge of the board
-        for( j = 0; j < board_width - 1 ; j++) {
-          if((board[i][j] == board[i][j+1]) && (board[i][j] !=0)) {
-            board[i][j] += 1;
-            board[i][j+1] = 0;
+      for ( x = board_width - 1; x != 255; x--) {
+        for( y = 0; y < board_height - 1 ; y++) {
+          if((board[x][y] == board[x][y + 1]) && (board[x][y] !=0)) {
+            board[x][y]    += 1;
+            board[x][y + 1] = 0;
           }
         }
       }
       break;
     case PAD_DOWN:
-      for ( i = board_height - 1; i >= 0; i--) {
-        //here we have j >= 1 to avoid going past the edge
-        for( j = board_width - 1; j >= 1 ; j--) {
-          if((board[i][j] == board[i][j-1]) && (board[i][j] !=0)){
-            board[i][j] += 1;
-            board[i][j-1] = 0;
+      for ( x = board_width - 1; x != 255; x--) {
+        for( y = board_height - 1; y >= 1 ; y--) {
+          if((board[x][y] == board[x][y - 1]) && (board[x][y] !=0)){
+            board[x][y]    += 1;
+            board[x][y - 1] = 0;
           }
         }
       }
       break;
       
     case PAD_LEFT:
-      for( j = 0; j < board_width ; j++) {
-        //again board_height - 1 to avoid the edge
-        for( i = 0; i < board_height - 1; i++) {
-          if((board[i][j] == board[i+1][j]) && (board[i][j] !=0)){
-            board[i][j] += 1;
-            board[i+1][j] = 0;
+      for( y = 0; y < board_height ; y++) {
+        for( x = 0; x < board_width - 1; x++) {
+          if((board[x][y] == board[x + 1][y]) && (board[x][y] !=0)){
+            board[x][y]    += 1;
+            board[x + 1][y] = 0;
           }
         }
-      }      
+      }
       break;
       
     case PAD_RIGHT:
-      for( j = 0; j < board_width ; j++) {
-        //again to i >= 1 to avoid the edge
-        for( i = board_height - 1; i >= 1 ; i--) {	
-          if((board[i][j] == board[i-1][j]) && (board[i][j] !=0)){
-            board[i][j] += 1;
-            board[i-1][j] = 0;
+      for( y = 0; y < board_height ; y++) {
+        for( x = board_width - 1; x >= 1 ; x--) {	
+          if((board[x][y] == board[x - 1][y]) && (board[x][y] !=0)){
+            board[x][y]    += 1;
+            board[x - 1][y] = 0;
           }
         }
       }     
@@ -470,31 +484,31 @@ bool is_valid_pair(byte a, byte b) {
 
 //check if this is a valid move
 bool is_valid_move(char pad) {
-  int i = 0;
-  int j = 0;
+  byte x = 0;
+  byte y = 0;
 
   if (pad & PAD_UP) {
-    for ( i = board_height - 1; i >= 0; i--) {
-      for( j = 0; j < board_width - 1 ; j++) {
-        if(is_valid_pair(board[i][j], board[i][j+1])) return true;
+    for ( x = board_width - 1; x != 255; x--) {
+      for( y = 0; y < board_height - 1 ; y++) {
+        if(is_valid_pair(board[x][y], board[x][y+1])) return true;
       }
     }
   } else if (pad & PAD_DOWN) {
-    for ( i = board_height - 1; i >= 0; i--) {
-      for( j = board_width - 1; j >= 1 ; j--) {
-        if(is_valid_pair(board[i][j], board[i][j-1])) return true;
+    for ( x = board_width - 1; x != 255; x--) {
+      for( y = board_height - 1; y >= 1 ; y--) {
+        if(is_valid_pair(board[x][y], board[x][y-1])) return true;
       }
     }
   } else if (pad & PAD_LEFT) {
-    for( j = 0; j < board_width ; j++) {
-      for( i = 0; i < board_height - 1; i++) {
-        if(is_valid_pair(board[i][j], board[i+1][j])) return true;
+    for( y = 0; y < board_height ; y++) {
+      for( x = 0; x < board_width - 1; x++) {
+        if(is_valid_pair(board[x][y], board[x+1][y])) return true;
       }
     }
   } else if (pad & PAD_RIGHT) {
-    for( j = 0; j < board_width ; j++) {
-      for( i = board_height - 1; i >= 1 ; i--) {	
-        if(is_valid_pair(board[i][j], board[i-1][j])) return true;
+    for( y = 0; y < board_height ; y++) {
+      for( x = board_width - 1; x >= 1 ; x--) {	
+        if(is_valid_pair(board[x][y], board[x-1][y])) return true;
       }
     }
   }
@@ -504,20 +518,20 @@ bool is_valid_move(char pad) {
 //check the status of the game
 bool game_win_lose() {
   //brute force, just roll over all values and check for 2048 and 0s
-  int i = 0;
-  int j = 0;
+  byte x = 0;
+  byte y = 0;
   bool win = false;
   bool lose = false;
 
-  for( i = 0; i < board_height; i++) {
-    for( j = 0; j < board_width; j++) {
-      if(board[i][j] == win_score) return GAME_WIN;	//TODO make this changable for harder modes
+  for( x = 0; x < board_width; x++) {
+    for( y = 0; y < board_height; y++) {
+      if(board[x][y] == win_score) return GAME_WIN;	//TODO make this changable for harder modes
     }
   }
   //we have to check for continue after win, otherwise it often will find a 0 first.
-  for( i = 0; i < board_height; i++) {
-    for( j = 0; j < board_width; j++) {
-      if(board[i][j] == 0) return GAME_CONTINUE;
+  for( x = 0; x < board_width; x++) {
+    for( y = 0; y < board_height; y++) {
+      if(board[x][y] == 0) return GAME_CONTINUE;
     }
   }
      
@@ -539,10 +553,10 @@ void draw_winscreen(int state) {
 }
 
 void reset_gameboard() {
-  int i, j;
-  for( j = 0; j < board_width ; j++) {
-    for( i = 0; i < board_height ; i++) {
-      board[i][j] = 0;
+  byte x, y;
+  for( x = 0; x < board_width ; x++) {
+    for( y = 0; y < board_height ; y++) {
+      board[x][y] = 0;
     }
   }
 }
