@@ -1,7 +1,7 @@
 .export _game_title_pal
 .export _game_title_rle
-.export _game_board_rle
 .export _game_options_rle
+.export _board_bg_00
 
 ;;{pal:"nes",layout:"nes"};;
 _game_title_pal:
@@ -40,21 +40,6 @@ _game_title_rle:
 ;;
 
 ;;{w:32,h:30,bpp:8,comp:"rletag",map:"nesnt"};;
-_game_board_rle:
- .byte $01,$00,$01,$fe,$00,$01,$08,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03
- .byte $03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f
- .byte $f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$00,$01,$0f,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4
- .byte $ff,$ff,$f6,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03
- .byte $fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$00,$01,$0f,$f4
- .byte $ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03
- .byte $03,$fe,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7
- .byte $f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$00,$01,$0f,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$f4,$ff,$ff,$f6,$00,$01,$0f,$fc,$03
- .byte $03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$00,$01,$0f,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03,$fe,$fc,$03,$03
- .byte $fe,$00,$01,$0f,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$f5,$fd,$fd,$f7,$00,$01,$d9,$ff,$01,$03,$00,$01,$03,$ff,$01,$03
- .byte $00,$01,$03,$ff,$01,$03,$00,$01,$03,$ff,$01,$03,$00,$01,$10,$00,$01,$00
-;;
-
-;;{w:32,h:30,bpp:8,comp:"rletag",map:"nesnt"};;
 _game_options_rle:
   .byte $03,$00,$03,$4c,$4f,$50,$54,$49,$4f,$4e,$53,$00,$03,$31,$57,$49
   .byte $4e,$00,$53,$43,$4f,$52,$45,$3a,$00,$03,$04,$16,$32,$30,$34,$38
@@ -74,4 +59,12 @@ _game_options_rle:
   .byte $55,$55,$51,$cc,$fc,$00,$00,$04,$05,$05,$01,$08,$00,$03,$06,$04
   .byte $05,$00,$00,$40,$50,$50,$10,$00,$03,$03,$44,$55,$50,$55,$03,$02
   .byte $00,$03,$07,$00,$03,$00
+;;
+
+;; background images
+;; blank background
+;;{w:32,h:30,bpp:8,comp:"rletag",map:"nesnt"};;
+_board_bg_00:
+  .byte $01,$00,$01,$fe,$00,$01,$fe,$00,$01,$fe,$00,$01,$c2,$ff,$01,$37
+  .byte $0f,$01,$06,$0f,$01,$00
 ;;

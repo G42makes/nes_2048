@@ -18,11 +18,14 @@
 #include "vrambuf.h"
 //#link "vrambuf.c"
 
+#define SCREEN_WIDTH  32
+#define SCREEN_HEIGHT 30
+
 //Import the pallet and startup screen
 extern const byte game_title_pal[16];
 extern const byte game_title_rle[];
-extern const byte game_board_rle[];
 extern const byte game_options_rle[];
+extern const byte board_bg_00[];
 
 //some values to define win/loss/continue state
 #define GAME_CONTINUE 0
@@ -49,10 +52,10 @@ byte win_score = 11;	//2^11 = 2048
 //Board definitions
 byte board_width = 4;
 byte board_height = 4;
-#define BOARD_MAX_HEIGHT = 7 //might be into the borders
-#define BOARD_MIN_HEIGHT = 2 //does this make sense?
 #define BOARD_MAX_WIDTH  = 8 //might be into the borders
 #define BOARD_MIN_WIDTH  = 2 //does this make sense?
+#define BOARD_MAX_HEIGHT = 7 //might be into the borders
+#define BOARD_MIN_HEIGHT = 2 //does this make sense?
 #define BOARD_MAX	 = (BOARD_MAX_HEIGHT * BOARD_MAX_WIDTH)
 //Based on the max values above for board size, let's grab some ram to store
 //  the board. We store the power of 2 in here, as it lets us go bigger on 
@@ -164,8 +167,8 @@ void init_gameboard() {
 // put the specified value in the x,y location requested on the playboard
 void fill_tile(int x, int y, byte pow) {
   //calculate the offset for each direction
-  int nx = (x * 4) + 9;
-  int ny = (y * 4) + 9;
+  byte nx = (x * 4) + (SCREEN_WIDTH  / 2) - (board_width  * 2) + 1;
+  byte ny = (y * 4) + (SCREEN_HEIGHT / 2) - (board_height * 2) + 1;
   
   //start with an empty array
   char vals[2][2] = {
@@ -278,13 +281,63 @@ void fill_tile(int x, int y, byte pow) {
   vrambuf_put(NTADR_A(nx,ny+1),vals[1],2);
 }
 
+void draw_blank_tile(byte screen_x, byte screen_y, byte tileset) {
+  char buffer[4][4];
+  byte y;
+  //ignore tileset for now
+  //TODO, store this as a set of bytes, maybe from an assembly file
+  buffer[0][0] = 0xF8;	//upper left corner
+  buffer[0][1] = 0xFF;	//top line
+  buffer[0][2] = 0xFF;
+  buffer[0][3] = 0xFA;	//upper right corner
+  
+  buffer[1][0] = 0xFC;	//left line
+  buffer[1][1] = 0x03;	//filled blank
+  buffer[1][2] = 0x03;
+  buffer[1][3] = 0xFE;	//right line
+  
+  buffer[2][0] = 0xFC;	//left line
+  buffer[2][1] = 0x03;	//filled blank
+  buffer[2][2] = 0x03;
+  buffer[2][3] = 0xFE;	//right line
+  
+  buffer[3][0] = 0xF9;	//lower left corner
+  buffer[3][1] = 0xFD;	//bottom line
+  buffer[3][2] = 0xFD;
+  buffer[3][3] = 0xFB;	//lower right corner
+  
+  for( y = 0; y < 4; y++) {
+    vrambuf_put(NTADR_A(screen_x,screen_y+y),buffer[y],4);
+  }
+  vrambuf_flush();
+  buffer[0][0] = tileset;//TODO delete this, it's just to shut up the compiler for now
+}
+
 void draw_gameboard_bg() {
+  byte x,y;
+  byte start_x = SCREEN_WIDTH  / 2 - (board_width  * 2);
+  byte start_y = SCREEN_HEIGHT / 2 - (board_height * 2);
+  
   ppu_wait_frame();
   ppu_off();
   // unpack nametable into the VRAM
   vram_adr(NAMETABLE_A);
-  vram_unrle(game_board_rle);
+  vram_unrle(board_bg_00);
+  pal_bright(0);
+  
   ppu_on_all();
+  
+  //test
+  draw_blank_tile((SCREEN_WIDTH / 2) - 2,(SCREEN_HEIGHT / 2) - 2,1);
+  //draw_blank_tile(14,13,1);
+  
+  //draw the gameboard automatically
+  for(   x = start_x; x < start_x + (board_width  * 4); x+=4 ){
+    for( y = start_y; y < start_y + (board_height * 4); y+=4 ){
+      draw_blank_tile(x,y,1);
+    }
+  }
+  fade_in();
 }
 
 //take the current state and draw it
@@ -294,20 +347,13 @@ void draw_gameboard() {
   //char tmp[63];
   //We run this twice, as it is too many updates for the code otherwise
   //TODO: genericize this for larger boards.
-  for( x = 0; x < board_width / 2; x++) {
+  
+  for( x = 0; x < board_width; x++) {
     for( y = 0; y < board_height; y++) {
       fill_tile(x, y, board[x][y]);
     }
+    vrambuf_flush();
   }
-  vrambuf_flush();
-  for( x = board_width / 2; x < board_width; x++) {
-    for( y = 0; y < board_height; y++) {
-      fill_tile(x, y, board[x][y]);
-    }
-  }
-  vrambuf_flush();
-  
-  
   //debug code
   /*for( x = 0; x < board_width;  x++){
     for( y=0; y < board_height; y++){
@@ -518,6 +564,7 @@ bool is_valid_move(char pad) {
 //check the status of the game
 bool game_win_lose() {
   //brute force, just roll over all values and check for 2048 and 0s
+  //TODO: allow one last move?
   byte x = 0;
   byte y = 0;
   bool win = false;
