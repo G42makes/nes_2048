@@ -32,37 +32,23 @@ extern const byte board_bg_00[];
 #define GAME_LOSE 1
 #define GAME_WIN 2
 
-//Let's store the 2048 board, we store the power of 2 in bytes
-// so each element can store up to 2^256, but we can only use 4 numbers
-// to display, so max score is 2^13=8192.
-//TODO, make this more dynamic based on board size
-/*byte board[4][4] = {
-  { 0, 0, 0, 0},
-  { 0, 0, 0, 0},
-  { 0, 0, 0, 0},
-  { 0, 0, 0, 0}
-};*/
-
 //Setup the initial state for all options:
 //Win Score, max is based on we can only print 4 numers per tile
 //TODO: can we surpass 2^13 with specially crafted number tiles to fit more?
+// Short answer is yes, with 3 digits compressed to 2 tiles, but I have not made
+//  a set that I like yet.
 byte win_score = 11;	//2^11 = 2048
 #define MAX_SCORE 13	//2^13 = 8192
 
 //Board definitions
 byte board_width = 4;
 byte board_height = 4;
-#define BOARD_MAX_WIDTH  = 8 //might be into the borders
-#define BOARD_MIN_WIDTH  = 2 //does this make sense?
-#define BOARD_MAX_HEIGHT = 7 //might be into the borders
-#define BOARD_MIN_HEIGHT = 2 //does this make sense?
-#define BOARD_MAX	 = (BOARD_MAX_HEIGHT * BOARD_MAX_WIDTH)
-//Based on the max values above for board size, let's grab some ram to store
-//  the board. We store the power of 2 in here, as it lets us go bigger on 
-//  the single bytes we use.
-//byte board[BOARD_MAX];
-//byte board[BOARD_MAX_WIDTH][BOARD_MAX_HEIGHT];
-byte board[8][7];
+#define BOARD_MAX_WIDTH  8 //might be into the borders
+#define BOARD_MIN_WIDTH  2 //does this make sense?
+#define BOARD_MAX_HEIGHT 7 //might be into the borders
+#define BOARD_MIN_HEIGHT 2 //does this make sense?
+//the playboard array that stores the values(as 2^x)
+byte board[BOARD_MAX_WIDTH][BOARD_MAX_HEIGHT];
 
 //Visual settings
 //not used yet
