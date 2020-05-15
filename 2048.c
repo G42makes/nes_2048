@@ -88,26 +88,101 @@ void fade_in() {
 }
 
 //and borrowed routine to display the spash screen.
-void show_title_screen(const byte* pal, const byte* rle) {
+byte show_title_screen() {
+  byte pad, i;
+  int selection = 0;
+  int last_selection = 1;
+  const byte addresses[4][2]= { 	//used to map selection to screen location
+    {8,12}, 				// New Game
+    {8,15}, 				// Options
+    {8,17}, 				// High Scores
+    {8,20} 				// Credits
+  };	
+  const char cursor[1] = { 0x16 };	// Card Diamond char
+  const char blank[1]  = { 0x00 };	// Clear blank
+  const byte debounce = 4;
+  
   // disable rendering
   ppu_off();
   // set palette, virtual bright to 0 (total black)
-  pal_bg(pal);
+  pal_bg(game_title_pal);
   // unpack nametable into the VRAM
   vram_adr(NAMETABLE_A);
-  vram_unrle(rle);
+  vram_unrle(game_title_rle);
   //set it to faded out before enabling
   pal_bright(0);
   // enable rendering
   ppu_on_all();
   // fade in from black
   fade_in();
+  
+  //draw first cursor
+  vrambuf_put(NTADR_A(addresses[selection][0],addresses[selection][1]),cursor,1);
+  vrambuf_flush();
+  
+  while (1) {
+    ppu_wait_frame();
+    pad = pad_poll(0);
+    if (pad) {
+      switch(pad) {
+        case PAD_DOWN:
+          last_selection = selection;
+          selection++;
+          if (selection > 3) selection = 0;
+          break;
+        case PAD_UP:
+          last_selection = selection;
+          selection--;
+          if (selection < 0) selection = 3;
+          break;
+        case PAD_START:
+        case PAD_A:
+        case PAD_B:
+          //delay a bit to eat the button press if going to another selection screen
+          //debounce - delay a few frames
+            for ( i = 0; i < debounce; i++ ) {
+                  ppu_wait_frame();
+            }
+            return (byte)selection;
+          break;
+      }
+
+      //update selection
+      vrambuf_put(NTADR_A(addresses[selection][0],addresses[selection][1]),cursor,1);
+      vrambuf_put(NTADR_A(addresses[last_selection][0],addresses[last_selection][1]),blank,1);
+      vrambuf_flush();
+      
+      //debounce - delay a few frames
+      for ( i = 0; i < debounce; i++ ) {
+            ppu_wait_frame();
+      }
+    }
+    //TODO: animate cursor? sprite or just screen udpate
+  }
 }
 
 //bring up the options page and let uses select changes
 //TODO: this does nothing right now
 void show_options_page() {
-  char pad;
+  byte pad, i;
+  char buffer[4];
+  int selection = 0;
+  int last_selection = 1;
+  const byte addresses[7][2]= { 	//used to map selection to screen location
+    {20,4}, 				// Win Score
+    {20,6}, 				// Board Width
+    {20,7}, 				// Board Height
+    {20,9}, 				// Tile Style
+    {20,11},				// Tile Pallette
+    {20,13},				// Background Selection
+    {20,16}				// Return
+  };	
+  const char cursor[1] = { 0x16 };	// Card Diamond char
+  const char blank[1]  = { 0x00 };	// Clear blank
+  const byte debounce = 4;
+  
+  memset(buffer, 0, sizeof(buffer));
+  
   ppu_off();
   pal_bg(game_title_pal);
   vram_adr(NAMETABLE_A);
@@ -116,12 +191,101 @@ void show_options_page() {
   ppu_on_all();
   fade_in();
   
+  //draw first cursor
+  vrambuf_put(NTADR_A(addresses[selection][0],addresses[selection][1]),cursor,1);
+  vrambuf_flush();
+  
   while(1){
-      pad = pad_poll(0);
-      if(pad & PAD_SELECT) {
-        pal_bright(0);
-        return;      
+    ppu_wait_frame();
+    pad = pad_poll(0);
+    if (pad) {
+      switch(pad) {
+        case PAD_DOWN:
+          last_selection = selection;
+          selection++;
+          if (selection > 6) selection = 0;
+          break;
+        case PAD_UP:
+          last_selection = selection;
+          selection--;
+          if (selection < 0) selection = 6;
+          break;
+          
+          
+        case PAD_LEFT:
+          switch (selection) {
+            case 0:
+              win_score--;
+              if(win_score < 1) win_score = 1;
+              break;
+            case 1:
+              board_width--;
+              if(board_width < BOARD_MIN_WIDTH) board_width = BOARD_MIN_WIDTH;
+              break;
+            case 2:
+              board_height--;
+              if(board_height < BOARD_MIN_HEIGHT) board_height = BOARD_MIN_HEIGHT;
+              break;
+          }
+          break;
+        case PAD_RIGHT:
+          switch (selection) {
+            case 0:
+              win_score++;
+              if(win_score > MAX_SCORE) win_score = MAX_SCORE;
+              break;
+            case 1:
+              board_width++;
+              if(board_width > BOARD_MAX_WIDTH) board_width = BOARD_MAX_WIDTH;
+              break;
+            case 2:
+              board_height++;
+              if(board_height > BOARD_MAX_HEIGHT) board_height = BOARD_MAX_HEIGHT;
+              break;
+          }
+          break;
+          
+          
+        case PAD_START:
+        case PAD_A:
+        case PAD_B:
+          if(selection == 6) {	//selected return
+            return;
+          }
+          break;
+        default:
+          break;
       }
+      
+      //update selection
+      vrambuf_put(NTADR_A(addresses[selection][0],addresses[selection][1]),cursor,1);
+      vrambuf_put(NTADR_A(addresses[last_selection][0],addresses[last_selection][1]),blank,1);
+      vrambuf_flush();
+          
+      //and update the text for the selected entry:
+      switch(selection) {
+        case 0:
+          //update win score
+          sprintf(buffer, "%d", 1 << win_score);
+          vrambuf_put(NTADR_A(22,4),buffer,4);
+          break;
+        case 1:
+          sprintf(buffer, "%d", board_width);
+          vrambuf_put(NTADR_A(22,6),buffer,4);
+          break;
+        case 2:
+          sprintf(buffer, "%d", board_height);
+          vrambuf_put(NTADR_A(22,7),buffer,4);
+          break;
+        default:
+          break;
+      }
+      
+      //debounce - delay a few frames
+      for ( i = 0; i < debounce; i++ ) {
+            ppu_wait_frame();
+      }
+    }
   }
 }
 
@@ -596,23 +760,37 @@ void reset_gameboard() {
 
 void main(void)
 {
-  char pad;	// controller flags
+  byte pad;	// controller flags
+  byte return_code = 255;
 
   //run all the video setup routines
   setup_graphics();
     
   while(1) {
     
-    //show the title screen and wait for input
-    show_title_screen(game_title_pal, game_title_rle);
-    while(1){
-      pad = pad_poll(0);
-      if(pad & PAD_START)	break;
-      if(pad & PAD_SELECT) {
-        show_options_page();
-        fade_in();
+    while(return_code != 0) {
+      //show the title screen 
+      return_code = show_title_screen();
+      switch(return_code) {
+        case 1:
+          show_options_page();
+          break;
+          
+        case 2:
+          //high scores
+          break;
+          
+        case 3:
+          //credits
+          break;
+          
+        default:
+          //something broke - maybe try going and playing
+          return_code = 0;
+          break;
       }
     }
+    
 
     // initialize and draw the initial gameboard.
     init_gameboard();
