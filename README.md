@@ -22,6 +22,7 @@ These are items that I want to do to learn new things about coding on the NES, a
 * Add some sound
 * Add more interesting stuff to the playfield(ie game name at the top, more interesting graphics for win/loss)
 * Timer
+* New win/loss render that handles larger game boards better.
 * Options Page
   * Pallet choice
   * Tile choice
@@ -35,4 +36,4 @@ These are items that I want to do to learn new things about coding on the NES, a
 
 
 # Bugs
-* Win/Loss leads to a lockup requiring reset.
+* There are some, I just don't know of any right now.
