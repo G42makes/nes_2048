@@ -18,6 +18,11 @@
 #include "vrambuf.h"
 //#link "vrambuf.c"
 
+//We can enable or disable the high score code and screens
+// as we choose. (ie for hardware and emulators that don't support save)
+// TODO: can we detect if we have the ability to save at runtime?
+//#define ENABLE_HIGHSCORES
+
 #define SCREEN_WIDTH  32
 #define SCREEN_HEIGHT 30
 
@@ -25,6 +30,7 @@
 extern const byte game_title_pal[16];
 extern const byte game_title_rle[];
 extern const byte game_options_rle[];
+extern const byte game_credits_rle[];
 extern const byte board_bg_00[];
 
 //some values to define win/loss/continue state
@@ -57,7 +63,13 @@ byte pallette  = 0;
 byte background = 0;
 
 
-
+//a little debug function
+void debug(char a) {
+  char b[1];
+  b[0] = a;
+  vrambuf_put(NTADR_A(2,2),b,1);
+  vrambuf_flush();
+}
 
 // setup PPU and tables
 void setup_graphics() {
@@ -90,12 +102,20 @@ void fade_in() {
 //and borrowed routine to display the spash screen.
 byte show_title_screen() {
   byte pad, i;
+  #ifdef ENABLE_HIGHSCORES
+    char buffer[11];
+    #define MAIN_MENU_SIZE 4
+  #else
+    #define MAIN_MENU_SIZE 3
+  #endif
   int selection = 0;
   int last_selection = 1;
-  const byte addresses[4][2]= { 	//used to map selection to screen location
+  const byte addresses[MAIN_MENU_SIZE][2]= { 	//used to map selection to screen location
     {8,12}, 				// New Game
     {8,15}, 				// Options
-    {8,17}, 				// High Scores
+    #ifdef ENABLE_HIGHSCORES
+        {8,17}, 				// High Scores
+    #endif
     {8,20} 				// Credits
   };	
   const char cursor[1] = { 0x16 };	// Card Diamond char
@@ -109,6 +129,12 @@ byte show_title_screen() {
   // unpack nametable into the VRAM
   vram_adr(NAMETABLE_A);
   vram_unrle(game_title_rle);
+  
+  //if we have enabled highscores, add the option to the page
+  #ifdef ENABLE_HIGHSCORES
+    sprintf(buffer, "High Scores");
+    vrambuf_put(NTADR_A(10, 17), buffer, 11);
+  #endif
   //set it to faded out before enabling
   pal_bright(0);
   // enable rendering
@@ -128,12 +154,12 @@ byte show_title_screen() {
         case PAD_DOWN:
           last_selection = selection;
           selection++;
-          if (selection > 3) selection = 0;
+          if (selection > MAIN_MENU_SIZE - 1) selection = 0;
           break;
         case PAD_UP:
           last_selection = selection;
           selection--;
-          if (selection < 0) selection = 3;
+          if (selection < 0) selection = MAIN_MENU_SIZE - 1;
           break;
         case PAD_START:
         case PAD_A:
@@ -143,7 +169,12 @@ byte show_title_screen() {
             for ( i = 0; i < debounce; i++ ) {
                   ppu_wait_frame();
             }
+          #ifdef ENABLE_HIGHSCORES
             return (byte)selection;
+          #else
+            if(selection < 2) return (byte)selection;
+            else return (byte)selection + 1;
+          #endif
           break;
       }
 
@@ -154,7 +185,7 @@ byte show_title_screen() {
       
       //debounce - delay a few frames
       for ( i = 0; i < debounce; i++ ) {
-            ppu_wait_frame();
+        ppu_wait_frame();
       }
     }
     //TODO: animate cursor? sprite or just screen udpate
@@ -168,7 +199,8 @@ void show_options_page() {
   char buffer[4];
   int selection = 0;
   int last_selection = 1;
-  const byte addresses[7][2]= { 	//used to map selection to screen location
+  #define OPTIONS_MENU_SIZE 7
+  const byte addresses[OPTIONS_MENU_SIZE][2]= { 	//used to map selection to screen location
     {20,4}, 				// Win Score
     {20,6}, 				// Board Width
     {20,7}, 				// Board Height
@@ -203,12 +235,12 @@ void show_options_page() {
         case PAD_DOWN:
           last_selection = selection;
           selection++;
-          if (selection > 6) selection = 0;
+          if (selection > OPTIONS_MENU_SIZE - 1) selection = 0;
           break;
         case PAD_UP:
           last_selection = selection;
           selection--;
-          if (selection < 0) selection = 6;
+          if (selection < 0) selection = OPTIONS_MENU_SIZE - 1;
           break;
           
           
@@ -249,7 +281,7 @@ void show_options_page() {
         case PAD_START:
         case PAD_A:
         case PAD_B:
-          if(selection == 6) {	//selected return
+          if(selection == OPTIONS_MENU_SIZE - 1) {	//selected return
             return;
           }
           break;
@@ -271,11 +303,11 @@ void show_options_page() {
           break;
         case 1:
           sprintf(buffer, "%d", board_width);
-          vrambuf_put(NTADR_A(22,6),buffer,4);
+          vrambuf_put(NTADR_A(22,6),buffer,1);
           break;
         case 2:
           sprintf(buffer, "%d", board_height);
-          vrambuf_put(NTADR_A(22,7),buffer,4);
+          vrambuf_put(NTADR_A(22,7),buffer,1);
           break;
         default:
           break;
@@ -285,6 +317,31 @@ void show_options_page() {
       for ( i = 0; i < debounce; i++ ) {
             ppu_wait_frame();
       }
+    }
+  }
+}
+
+void show_credits() {
+  byte pad, i;
+  const byte debounce = 4;
+  
+  ppu_off();
+  pal_bg(game_title_pal);
+  vram_adr(NAMETABLE_A);
+  vram_unrle(game_credits_rle);
+  pal_bright(0);
+  ppu_on_all();
+  fade_in();
+  
+  while(1) {
+    ppu_wait_frame();
+    pad = pad_poll(0);
+    //press any key to continue
+    if (pad) {
+      for ( i = 0; i < debounce; i++ ) {
+            ppu_wait_frame();
+      }
+      return;
     }
   }
 }
@@ -738,7 +795,9 @@ bool game_win_lose() {
 
 //let the player know they won/lost
 void draw_winscreen(int state) {
+  byte pad;
   char str[9];
+  
   memset(str, 0, sizeof(str));
   ppu_wait_frame();
   if(state == GAME_WIN)  sprintf(str, "WINNER!");
@@ -747,6 +806,16 @@ void draw_winscreen(int state) {
   sprintf(str, "PRESS START");
   vrambuf_put(NTADR_A(11,25), str, 11);
   vrambuf_flush();
+  
+  while(1) {
+    ppu_wait_frame();
+    pad = pad_poll(0);
+    //press any key to continue
+    if (pad == PAD_START) {
+      debug(0x62);
+      return;
+    }
+  }
 }
 
 void reset_gameboard() {
@@ -758,16 +827,49 @@ void reset_gameboard() {
   }
 }
 
+void play_game() {
+  byte pad;
+  byte state;
+
+  // initialize and draw the initial gameboard.
+  init_gameboard();
+  draw_gameboard_bg();
+  draw_gameboard();
+
+  while (1) {
+    ppu_wait_frame();
+    pad = pad_poll(0);	//TODO: on some emulators(FCEUX) this can sometimes act up.
+    
+    //TODO: make sure we can do one last move?
+    state = game_win_lose();
+    
+    //TODO: fix this state logic block somehow....
+    if(state != 0) {
+      draw_winscreen(state);
+    } else {
+      if(is_valid_move(pad)) move_gameboard(pad);
+      state = game_win_lose();
+      if(state != 0) {
+        draw_winscreen(state);
+        return;
+      }
+    }
+    while (!pad_trigger(0)) {
+      ppu_wait_nmi();
+    }
+  }
+}
+
 void main(void)
 {
-  byte pad;	// controller flags
-  byte return_code = 255;
+  //byte pad;	// controller flags
+  byte return_code;
 
   //run all the video setup routines
   setup_graphics();
     
   while(1) {
-    
+    return_code = 255;
     while(return_code != 0) {
       //show the title screen 
       return_code = show_title_screen();
@@ -781,7 +883,7 @@ void main(void)
           break;
           
         case 3:
-          //credits
+          show_credits();
           break;
           
         default:
@@ -791,32 +893,8 @@ void main(void)
       }
     }
     
-
-    // initialize and draw the initial gameboard.
-    init_gameboard();
-    draw_gameboard_bg();
-    draw_gameboard();
- 
-    while (1) {
-      int state;
-      pad = pad_poll(0);	//TODO: on some emulators(FCEUX) this can sometimes act up.
-      state = game_win_lose();
-      //TODO: fix this state logic block somehow....
-      if(state != 0) {
-        draw_winscreen(state);
-        if(pad & PAD_START) break;
-      } else {
-        if(is_valid_move(pad)) move_gameboard(pad);
-        state = game_win_lose();
-        if(state != 0) {
-          draw_winscreen(state);
-          //if(pad & PAD_START) break;
-        }
-      }
-      while (!pad_trigger(0)) {
-        ppu_wait_nmi();
-      }
-    }
+    play_game();
+    
     //and reset the board once game is done
     reset_gameboard();
   }
