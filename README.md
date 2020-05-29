@@ -36,4 +36,5 @@ These are items that I want to do to learn new things about coding on the NES, a
 
 
 # Bugs
-* There are some, I just don't know of any right now.
+* When returning to options screen, numbers are defaults, not the current settings
+* Debounce needs some work on the menus
