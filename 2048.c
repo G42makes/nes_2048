@@ -796,15 +796,49 @@ bool game_win_lose() {
 //let the player know they won/lost
 void draw_winscreen(int state) {
   byte pad;
-  char str[9];
-  
-  memset(str, 0, sizeof(str));
+  char buf[16];
+  byte x;
+   
   ppu_wait_frame();
-  if(state == GAME_WIN)  sprintf(str, "WINNER!");
-  if(state == GAME_LOSE) sprintf(str, "GAME OVER");
-  vrambuf_put(NTADR_A(12,24), str, 9);
-  sprintf(str, "PRESS START");
-  vrambuf_put(NTADR_A(11,25), str, 11);
+  
+  //we zero out the buffer
+  memset(buf, 0, sizeof(buf));
+   
+  //and since we want to use pallet 0 to draw our winscreen, 
+  // we just use the 0's in the buffer to update the attribute table
+  vrambuf_put(NAMETABLE_A + 0x03DA, buf, 4);
+  vrambuf_put(NAMETABLE_A + 0x03E2, buf, 4); 
+  
+  //now draw the box for the text:
+  //top line
+  memset(buf, 0xFF, sizeof(buf));
+  buf[0]  = 0xF8;
+  buf[15] = 0xFA;
+  vrambuf_put(NTADR_A(8,12),buf,16);
+  //sides of the box
+  memset(buf, 0x00, sizeof(buf));
+  buf[0]  = 0xFC;
+  buf[15] = 0xFE;
+  for( x = 13 ; x <= 15; x++ ) {
+    vrambuf_put(NTADR_A(8,x),buf,16);
+  }
+  vrambuf_flush();	//buffer is full by now
+  for( x = 16 ; x <= 18; x++ ) {
+    vrambuf_put(NTADR_A(8,x),buf,16);
+  }
+  //bottom line
+  memset(buf, 0xFD, sizeof(buf));
+  buf[0]  = 0xF9;
+  buf[15] = 0xFB;
+  vrambuf_put(NTADR_A(8,19),buf,16);
+  vrambuf_flush();	//buffer is full again
+    
+  memset(buf, 0, sizeof(buf));
+  if(state == GAME_WIN)  sprintf(buf, "  WINNER !  ");
+  if(state == GAME_LOSE) sprintf(buf, " GAME  OVER ");
+  vrambuf_put(NTADR_A(10,14), buf, 12);
+  sprintf(buf, "PRESS  START");
+  vrambuf_put(NTADR_A(10,17), buf, 12);
   vrambuf_flush();
   
   while(1) {
@@ -880,6 +914,7 @@ void main(void)
           
         case 2:
           //high scores
+          //not yet implemented
           break;
           
         case 3:
