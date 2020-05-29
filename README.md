@@ -1,5 +1,9 @@
 2048
 =====
+# Download
+Download the .nes ROM file from the Github releases page here: https://github.com/G42makes/nes_2048/releases/latest
+
+Feel free to redistribute the binary ROM file, as long as the credits page is unmodified.
 
 # Development
 [Open this project in 8bitworkshop](http://8bitworkshop.com/redir.html?platform=nes&githubURL=https%3A%2F%2Fgithub.com%2FG42makes%2Fnes_2048&file=2048.c).
